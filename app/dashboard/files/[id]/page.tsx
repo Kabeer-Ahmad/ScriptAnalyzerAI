@@ -56,8 +56,8 @@ export default async function FileDetailPage({ params }: FileDetailPageProps) {
     const analysis = file.analyses?.[0]
 
     return (
-        <div className="flex flex-col h-[calc(100vh-4rem)]">
-            <div className="flex items-center justify-between mb-4 px-1">
+        <div className="flex flex-col h-full p-4 md:p-6 overflow-hidden">
+            <div className="flex items-center justify-between mb-4 px-1 shrink-0">
                 <div className="flex items-center gap-2">
                     <Link href="/dashboard">
                         <Button variant="ghost" size="icon">
@@ -82,8 +82,8 @@ export default async function FileDetailPage({ params }: FileDetailPageProps) {
                 </div>
             </div>
 
-            <Tabs defaultValue="transcript" className="flex-1 flex flex-col overflow-hidden">
-                <div className="border-b px-1">
+            <Tabs defaultValue="transcript" className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                <div className="border-b px-1 shrink-0">
                     <TabsList>
                         <TabsTrigger value="transcript">
                             <FileText className="mr-2 h-4 w-4" />
@@ -100,15 +100,15 @@ export default async function FileDetailPage({ params }: FileDetailPageProps) {
                     </TabsList>
                 </div>
 
-                <TabsContent value="transcript" className="flex-1 overflow-hidden p-4 pt-4 border rounded-md m-1 bg-white dark:bg-zinc-950">
+                <TabsContent value="transcript" className="flex-1 overflow-hidden min-h-0 p-4 pt-4 border rounded-md m-1 bg-white dark:bg-zinc-950">
                     <TranscriptView transcription={transcription} />
                 </TabsContent>
 
-                <TabsContent value="analysis" className="flex-1 overflow-auto p-4 pt-4 border rounded-md m-1 bg-white dark:bg-zinc-950">
+                <TabsContent value="analysis" className="flex-1 overflow-auto min-h-0 p-4 pt-4 border rounded-md m-1 bg-white dark:bg-zinc-950">
                     <AnalysisView analysis={analysis} fileId={file.id} />
                 </TabsContent>
 
-                <TabsContent value="chat" className="flex-1 overflow-hidden p-4 pt-4 border rounded-md m-1 bg-white dark:bg-zinc-950">
+                <TabsContent value="chat" className="flex-1 flex flex-col min-h-0 overflow-hidden p-4 pt-4 border rounded-md m-1 bg-white dark:bg-zinc-950 shadow-sm">
                     <ChatInterface fileId={file.id} />
                 </TabsContent>
             </Tabs>

@@ -49,7 +49,7 @@ export function ChatInterface({ fileId }: ChatInterfaceProps) {
     // Auto-scroll to bottom
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }, [messages])
+    }, [messages, isLoading])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -114,12 +114,20 @@ export function ChatInterface({ fileId }: ChatInterfaceProps) {
     }
 
     return (
-        <div className="flex flex-col h-full max-w-4xl mx-auto">
-            <ScrollArea className="flex-1 pr-4">
-                <div className="space-y-4">
+        <div className="flex flex-col h-full mx-auto w-full">
+            <ScrollArea className="flex-1 h-0 pr-4">
+                <div className="space-y-6 px-4 pb-4">
                     {messages.length === 0 && (
-                        <div className="text-center text-muted-foreground py-10">
-                            <p>Ask me anything about the content of this file.</p>
+                        <div className="flex flex-col items-center justify-center h-[50vh] text-center space-y-4">
+                            <div className="p-4 rounded-full bg-primary/10">
+                                <Bot className="h-8 w-8 text-primary" />
+                            </div>
+                            <div className="space-y-2">
+                                <h3 className="font-semibold text-lg">Chat with your Transcript</h3>
+                                <p className="text-muted-foreground text-sm max-w-sm">
+                                    Ask specific questions, request summaries, or explore insights from your file.
+                                </p>
+                            </div>
                         </div>
                     )}
 
@@ -130,22 +138,23 @@ export function ChatInterface({ fileId }: ChatInterfaceProps) {
                                 }`}
                         >
                             {message.role === 'assistant' && (
-                                <Avatar className="h-8 w-8">
+                                <Avatar className="h-8 w-8 mt-1 border">
+                                    <AvatarImage src="/bot-avatar.png" />
                                     <AvatarFallback><Bot className="h-4 w-4" /></AvatarFallback>
                                 </Avatar>
                             )}
 
                             <div
-                                className={`rounded-lg p-3 max-w-[80%] ${message.role === 'user'
-                                    ? 'bg-primary text-primary-foreground'
-                                    : 'bg-muted'
+                                className={`rounded-xl p-4 text-sm max-w-[85%] md:max-w-[75%] shadow-sm ${message.role === 'user'
+                                    ? 'bg-primary text-primary-foreground rounded-br-none'
+                                    : 'bg-muted/50 border rounded-bl-none'
                                     }`}
                             >
-                                <p className="text-sm">{message.content}</p>
+                                <p className="leading-relaxed whitespace-pre-wrap">{message.content}</p>
                             </div>
 
                             {message.role === 'user' && (
-                                <Avatar className="h-8 w-8">
+                                <Avatar className="h-8 w-8 mt-1 border">
                                     <AvatarFallback><User className="h-4 w-4" /></AvatarFallback>
                                 </Avatar>
                             )}
@@ -154,11 +163,12 @@ export function ChatInterface({ fileId }: ChatInterfaceProps) {
 
                     {isLoading && (
                         <div className="flex gap-3 justify-start">
-                            <Avatar className="h-8 w-8">
+                            <Avatar className="h-8 w-8 mt-1 border">
                                 <AvatarFallback><Bot className="h-4 w-4" /></AvatarFallback>
                             </Avatar>
-                            <div className="bg-muted rounded-lg p-3">
+                            <div className="bg-muted/50 border rounded-xl rounded-bl-none p-4 flex items-center gap-2">
                                 <Loader2 className="h-4 w-4 animate-spin" />
+                                <span className="text-xs text-muted-foreground">Thinking...</span>
                             </div>
                         </div>
                     )}
@@ -166,16 +176,16 @@ export function ChatInterface({ fileId }: ChatInterfaceProps) {
                 </div>
             </ScrollArea>
 
-            <div className="mt-4 pt-4 border-t">
-                <form onSubmit={handleSubmit} className="flex gap-2">
+            <div className="mt-4 pt-4 border-t bg-background">
+                <form onSubmit={handleSubmit} className="flex gap-2 items-end">
                     <Input
-                        placeholder="Type your question..."
+                        placeholder="Ask a question about the file..."
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         disabled={isLoading}
-                        className="flex-1"
+                        className="flex-1 min-h-[44px]"
                     />
-                    <Button type="submit" disabled={isLoading || !input.trim()}>
+                    <Button type="submit" size="icon" disabled={isLoading || !input.trim()} className="h-11 w-11 shrink-0">
                         <Send className="h-4 w-4" />
                         <span className="sr-only">Send</span>
                     </Button>

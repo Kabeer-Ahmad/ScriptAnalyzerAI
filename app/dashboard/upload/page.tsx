@@ -128,79 +128,81 @@ export default function UploadPage() {
     }
 
     return (
-        <div className="max-w-2xl mx-auto">
-            <h2 className="text-3xl font-bold tracking-tight mb-8">Upload Content</h2>
+        <div className="h-full overflow-y-auto p-4 md:p-6">
+            <div className="max-w-2xl mx-auto">
+                <h2 className="text-3xl font-bold tracking-tight mb-8">Upload Content</h2>
 
-            <div className="grid gap-8">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>File Upload</CardTitle>
-                        <CardDescription>Upload audio or video files (up to 500MB)</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {!file ? (
-                            <div
-                                {...getRootProps()}
-                                className={`
+                <div className="grid gap-8">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>File Upload</CardTitle>
+                            <CardDescription>Upload audio or video files (up to 500MB)</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {!file ? (
+                                <div
+                                    {...getRootProps()}
+                                    className={`
                                 border-2 border-dashed rounded-lg p-10 text-center cursor-pointer transition-colors
                                 ${isDragActive ? 'border-primary bg-primary/10' : 'border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900'}
                             `}
-                            >
-                                <input {...getInputProps()} />
-                                <div className="flex flex-col items-center gap-2">
-                                    <UploadCloud className="h-10 w-10 text-muted-foreground" />
-                                    <p className="text-sm font-medium">Click to upload or drag and drop</p>
-                                    <p className="text-xs text-muted-foreground">MP3, MP4, WAV, MOV (max 500MB)</p>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="flex items-center justify-between p-4 border rounded-lg bg-gray-50 dark:bg-gray-900">
-                                <div className="flex items-center gap-3">
-                                    <File className="h-8 w-8 text-primary" />
-                                    <div>
-                                        <p className="text-sm font-medium truncate max-w-[200px]">{file.name}</p>
-                                        <p className="text-xs text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                                >
+                                    <input {...getInputProps()} />
+                                    <div className="flex flex-col items-center gap-2">
+                                        <UploadCloud className="h-10 w-10 text-muted-foreground" />
+                                        <p className="text-sm font-medium">Click to upload or drag and drop</p>
+                                        <p className="text-xs text-muted-foreground">MP3, MP4, WAV, MOV (max 500MB)</p>
                                     </div>
                                 </div>
-                                <Button variant="ghost" size="icon" onClick={removeFile}>
-                                    <X className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+                            ) : (
+                                <div className="flex items-center justify-between p-4 border rounded-lg bg-gray-50 dark:bg-gray-900">
+                                    <div className="flex items-center gap-3">
+                                        <File className="h-8 w-8 text-primary" />
+                                        <div>
+                                            <p className="text-sm font-medium truncate max-w-[200px]">{file.name}</p>
+                                            <p className="text-xs text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                                        </div>
+                                    </div>
+                                    <Button variant="ghost" size="icon" onClick={removeFile}>
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
 
-                <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t" />
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-background px-2 text-muted-foreground">Or</span>
-                    </div>
-                </div>
-
-                <Card>
-                    <CardHeader>
-                        <CardTitle>YouTube URL</CardTitle>
-                        <CardDescription>Paste a YouTube link to process</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex items-center gap-2">
-                            <Youtube className="h-5 w-5 text-red-600" />
-                            <Input
-                                placeholder="https://www.youtube.com/watch?v=..."
-                                value={youtubeUrl}
-                                onChange={(e) => setYoutubeUrl(e.target.value)}
-                                disabled={!!file}
-                            />
+                    <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                            <span className="w-full border-t" />
                         </div>
-                    </CardContent>
-                </Card>
+                        <div className="relative flex justify-center text-xs uppercase">
+                            <span className="bg-background px-2 text-muted-foreground">Or</span>
+                        </div>
+                    </div>
 
-                <Button size="lg" onClick={handleUpload} disabled={isUploading || (!file && !youtubeUrl)}>
-                    {isUploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {isUploading ? 'Processing...' : 'Start Processing'}
-                </Button>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>YouTube URL</CardTitle>
+                            <CardDescription>Paste a YouTube link to process</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex items-center gap-2">
+                                <Youtube className="h-5 w-5 text-red-600" />
+                                <Input
+                                    placeholder="https://www.youtube.com/watch?v=..."
+                                    value={youtubeUrl}
+                                    onChange={(e) => setYoutubeUrl(e.target.value)}
+                                    disabled={!!file}
+                                />
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Button size="lg" onClick={handleUpload} disabled={isUploading || (!file && !youtubeUrl)}>
+                        {isUploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {isUploading ? 'Processing...' : 'Start Processing'}
+                    </Button>
+                </div>
             </div>
         </div>
     )
