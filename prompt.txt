@@ -1,0 +1,422 @@
+Build a professional Next.js application with Supabase backend that allows users to upload audio/video files or YouTube URLs, transcribe them using AI, generate intelligent summaries, and chat with AI about the content.
+Tech Stack Requirements
+
+Frontend: Next.js 14+ (App Router), React 18+, TypeScript, Tailwind CSS, shadcn/ui components
+Backend: Next.js API Routes (App Router), Supabase (PostgreSQL + Auth + Storage)
+AI Services:
+
+Transcription: AssemblyAI (primary), Deepgram (fallback)
+Analysis & Chat: Claude API (Anthropic - primary), OpenAI GPT-4 (fallback)
+
+
+File Processing: FFmpeg (for audio extraction from video)
+YouTube: yt-dlp or similar for URL downloads
+
+Database Schema (Supabase)
+Tables
+users (handled by Supabase Auth)
+
+Standard Supabase auth.users table
+
+files
+sql- id: uuid (primary key)
+- user_id: uuid (foreign key to auth.users)
+- filename: text
+- original_filename: text
+- file_type: text (audio/video)
+- file_size: bigint
+- storage_path: text (Supabase Storage path)
+- source_type: text (upload/youtube)
+- source_url: text (nullable - for YouTube)
+- status: text (uploading/processing/transcribing/completed/failed)
+- created_at: timestamp
+- updated_at: timestamp
+transcriptions
+sql- id: uuid (primary key)
+- file_id: uuid (foreign key to files)
+- transcript_text: text
+- transcription_service: text (assemblyai/deepgram)
+- confidence_score: float (nullable)
+- language: text
+- duration_seconds: integer
+- word_count: integer
+- created_at: timestamp
+analyses
+sql- id: uuid (primary key)
+- file_id: uuid (foreign key to files)
+- summary: text
+- key_points: jsonb (array of strings)
+- insights: text
+- time_assessment: text
+- analysis_service: text (claude/gpt4)
+- created_at: timestamp
+chat_sessions
+sql- id: uuid (primary key)
+- file_id: uuid (foreign key to files)
+- user_id: uuid (foreign key to auth.users)
+- created_at: timestamp
+chat_messages
+sql- id: uuid (primary key)
+- session_id: uuid (foreign key to chat_sessions)
+- role: text (user/assistant)
+- content: text
+- model_used: text (claude/gpt4)
+- created_at: timestamp
+```
+
+## Application Flow
+
+### 1. Authentication Flow
+```
+User lands on homepage
+  ↓
+Sign Up / Sign In (Supabase Auth - email/password + Google OAuth)
+  ↓
+Redirect to Dashboard
+```
+
+### 2. File Upload Flow (Local Files)
+```
+User clicks "Upload File" on Dashboard
+  ↓
+File picker opens (accept: audio/*, video/*)
+  ↓
+Client validates file (max 500MB, supported formats)
+  ↓
+Show upload progress bar
+  ↓
+Upload to Supabase Storage (bucket: 'media-files')
+  ↓
+Create record in 'files' table (status: 'processing')
+  ↓
+Trigger background processing API
+  ↓
+Extract audio if video (FFmpeg)
+  ↓
+Update status to 'transcribing'
+```
+
+### 3. YouTube URL Flow
+```
+User pastes YouTube URL
+  ↓
+Client validates URL format
+  ↓
+Send to API route /api/youtube/process
+  ↓
+Server downloads video using yt-dlp
+  ↓
+Extract audio track
+  ↓
+Save to Supabase Storage
+  ↓
+Create record in 'files' table
+  ↓
+Continue to transcription flow
+```
+
+### 4. Transcription Flow (2-Tier System)
+```
+File ready for transcription
+  ↓
+API Route: /api/transcribe/[fileId]
+  ↓
+Try AssemblyAI first:
+  ├─ Success? → Save to 'transcriptions' table
+  └─ Fail? → Fallback to Deepgram
+       ├─ Success? → Save to 'transcriptions' table  
+       └─ Fail? → Update file status to 'failed', notify user
+  ↓
+Update file status to 'transcribed'
+  ↓
+Trigger analysis flow
+```
+
+### 5. AI Analysis Flow (2-Tier System)
+```
+Transcription completed
+  ↓
+API Route: /api/analyze/[fileId]
+  ↓
+Retrieve transcript from database
+  ↓
+Try Claude API first:
+  ├─ Prompt: "Analyze this transcript and provide:
+  │   1. Comprehensive summary (3-5 paragraphs)
+  │   2. Key points (5-7 bullet points)
+  │   3. Insights and main takeaways
+  │   4. Time assessment (worth listening/reading)"
+  ├─ Success? → Save to 'analyses' table
+  └─ Fail? → Fallback to GPT-4
+       ├─ Same prompt structure
+       ├─ Success? → Save to 'analyses' table
+       └─ Fail? → Save partial data, notify user
+  ↓
+Update file status to 'completed'
+  ↓
+User gets notification/email (optional)
+```
+
+### 6. Chat Flow (2-Tier System)
+```
+User opens file detail page
+  ↓
+Create or retrieve chat_session
+  ↓
+User types question
+  ↓
+API Route: /api/chat/[sessionId]
+  ↓
+Retrieve transcript + analysis as context
+  ↓
+Try Claude API first:
+  ├─ System prompt: "You are an AI assistant analyzing this transcript.
+  │   Answer questions based only on the content provided.
+  │   If information isn't in the transcript, say so clearly."
+  ├─ Include full transcript in context
+  ├─ Include previous chat history
+  ├─ Success? → Return response, save to chat_messages
+  └─ Fail? → Fallback to GPT-4
+       ├─ Same prompt structure
+       ├─ Success? → Return response, save to chat_messages
+       └─ Fail? → Return error message
+  ↓
+Display response in chat interface (streaming)
+Page Structure & Routes
+Public Routes
+
+/ - Landing page (hero, features, how it works, CTA)
+/login - Sign in page
+/signup - Sign up page
+
+Protected Routes (require auth)
+
+/dashboard - Main dashboard (list of all files, upload button)
+/dashboard/file/[fileId] - File detail page (transcript, analysis, chat interface)
+/dashboard/settings - User settings (API usage, profile)
+
+API Routes
+
+/api/auth/[...nextauth] - Auth handlers (if using NextAuth alongside Supabase)
+/api/upload/presigned-url - Generate presigned URL for direct upload
+/api/youtube/process - Process YouTube URL
+/api/transcribe/[fileId] - Transcribe audio file
+/api/analyze/[fileId] - Analyze transcript
+/api/chat/[sessionId] - Chat endpoint with streaming
+/api/files/[fileId] - File CRUD operations
+/api/files/[fileId]/delete - Delete file and all related data
+
+UI/UX Components
+Landing Page Components
+
+Hero Section: Eye-catching headline, subheadline, primary CTA
+Features Grid: 6-8 feature cards with icons
+How It Works: 4-step visual process
+Use Cases: Tabbed section (Students, Professionals, Content Consumers)
+Pricing/Free Tier Info: Transparent limits
+Footer: Links, social media, legal
+
+Dashboard Components
+
+Sidebar Navigation: Dashboard, Settings, Logout
+Upload Card: Drag-drop zone + YouTube URL input
+Files Grid/List: Cards with thumbnail, title, status, duration, date
+Status Badges: Color-coded (Processing, Transcribing, Completed, Failed)
+Search & Filter: By status, date, file type
+
+File Detail Page Components
+
+File Header: Title, duration, file type, download original
+Tab Navigation: Summary, Transcript, Chat
+Summary Tab:
+
+Summary section (collapsible)
+Key Points list
+Insights section
+Time Assessment badge
+
+
+Transcript Tab:
+
+Full transcript with timestamps
+Search functionality
+Copy button
+Download as TXT/PDF
+
+
+Chat Tab:
+
+Chat interface (similar to ChatGPT)
+Message history
+Input field with submit button
+Suggested questions (generated from analysis)
+Streaming responses with loading indicator
+
+
+
+Shared Components
+
+Loading Skeletons: For all async data loading
+Error Boundaries: Graceful error handling
+Toast Notifications: Success/error feedback
+Progress Bars: File upload, transcription progress
+Modals: Confirmations, settings, etc.
+
+Error Handling & Fallbacks
+File Upload Errors
+
+File too large → Show error modal with size limit
+Unsupported format → Show supported formats
+Network error → Retry mechanism with exponential backoff
+Storage quota exceeded → Upgrade prompt
+
+Transcription Errors
+
+AssemblyAI fails → Auto-retry with Deepgram
+Both services fail → Save partial data, notify user, offer manual retry
+API rate limit → Queue system, notify user of wait time
+
+Analysis Errors
+
+Claude fails → Auto-retry with GPT-4
+Both fail → Save transcript only, offer manual retry later
+Context too long → Chunk transcript, analyze in parts
+
+Chat Errors
+
+API timeout → Retry once, show error message
+Rate limit → Show cooldown timer
+Context limit → Summarize older messages, keep recent history
+
+Security & Performance
+Security
+
+Row Level Security (RLS) in Supabase for all tables
+API routes protected with Supabase auth verification
+File type validation on both client and server
+Signed URLs for file downloads (expire after 1 hour)
+Rate limiting on all API routes (10 requests/minute per user)
+Input sanitization for all user inputs
+CORS properly configured
+
+Performance
+
+Server-side pagination for file lists (20 items per page)
+Lazy loading for transcript/analysis content
+Streaming responses for chat (SSE or websockets)
+Image optimization for thumbnails
+CDN for static assets
+Database indexes on foreign keys and frequently queried columns
+Redis cache for frequently accessed transcripts (optional)
+
+File Processing
+
+Process files asynchronously (background jobs)
+Show real-time status updates (polling or websockets)
+Automatic cleanup of failed processing jobs
+Webhook handling for transcription completion
+
+Environment Variables Required
+env# Supabase
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+
+# AssemblyAI
+ASSEMBLYAI_API_KEY=
+
+# Deepgram
+DEEPGRAM_API_KEY=
+
+# Anthropic (Claude)
+ANTHROPIC_API_KEY=
+
+# OpenAI
+OPENAI_API_KEY=
+
+# App Config
+NEXT_PUBLIC_APP_URL=
+MAX_FILE_SIZE_MB=500
+MAX_FREE_TIER_FILES=10
+Detailed Feature Requirements
+1. File Upload (Drag & Drop + Click)
+
+Multi-file support (process one at a time)
+Visual feedback during upload (progress bar, percentage)
+Pause/resume upload capability
+Preview before upload (for images/thumbnails)
+Cancel upload option
+
+2. YouTube Integration
+
+Support for various YouTube URL formats (watch, shorts, embed)
+Extract video metadata (title, duration, thumbnail)
+Download highest quality audio
+Handle age-restricted videos
+Handle private/deleted videos gracefully
+
+3. Transcription Features
+
+Display confidence scores per segment (if available)
+Speaker diarization (who said what - if supported)
+Timestamp alignment (clickable timestamps → audio playback position)
+Multiple language support
+Export transcript in multiple formats (TXT, SRT, VTT, PDF)
+
+4. Analysis Features
+
+Generate SEO-friendly title from content
+Extract keywords/topics automatically
+Sentiment analysis (positive/negative/neutral tone)
+Identify action items (for meetings)
+Chapter markers (for long content)
+
+5. Chat Features
+
+Context-aware responses (knows what's in the content)
+Suggested questions (5-10 generated from analysis)
+Message history persistence
+Export chat history
+Code block rendering (if discussing technical content)
+Markdown support in responses
+
+6. User Dashboard Features
+
+Quick stats (total files, total duration, storage used)
+Recent files section
+Search across all files (by title, content, date)
+Bulk actions (delete, export)
+Favorites/bookmarks
+Tags/categories for organization
+
+7. Settings Features
+
+Profile management (name, email, avatar)
+API usage dashboard (transcription minutes used, API calls)
+Email notifications toggle
+Dark mode toggle
+Export all data (GDPR compliance)
+Delete account (cascade delete all data)
+
+Design System
+Color Scheme (Professional)
+
+Primary: Indigo/Blue (#4F46E5)
+Secondary: Purple (#7C3AED)
+Success: Green (#10B981)
+Warning: Yellow (#F59E0B)
+Error: Red (#EF4444)
+Neutral: Gray scale (#F9FAFB → #111827)
+
+Typography
+
+Headings: Inter or Poppins (bold)
+Body: Inter or System UI
+Code: JetBrains Mono or Fira Code
+
+Component Style
+
+shadcn/ui components (already styled, accessible)
+Smooth animations (framer-motion)
+Glassmorphism effects for cards (optional, modern look)
+Consistent spacing (Tailwind's 4px scale)
